@@ -10,8 +10,11 @@ async def test_add_environment(app, minimal_repo, image_name):
     r = await add_environment(app, repo=minimal_repo, name=name, ref=ref)
     assert r.status_code == 200
     image = await wait_for_image(image_name=image_name)
+    image_config = image.get("ContainerConfig", None)
+    if image_config is None:
+        image_config = image.get("Config", {})
     assert (
-        image["ContainerConfig"]["Labels"]["tljh_repo2docker.image_name"] == image_name
+        image_config["Labels"]["tljh_repo2docker.image_name"] == image_name
     )
 
 
@@ -41,8 +44,11 @@ async def test_uppercase_repo(app, minimal_repo_uppercase, generated_image_name)
     r = await add_environment(app, repo=minimal_repo_uppercase)
     assert r.status_code == 200
     image = await wait_for_image(image_name=generated_image_name)
+    image_config = image.get("ContainerConfig", None)
+    if image_config is None:
+        image_config = image.get("Config", {})
     assert (
-        image["ContainerConfig"]["Labels"]["tljh_repo2docker.image_name"]
+        image_config["Labels"]["tljh_repo2docker.image_name"]
         == generated_image_name
     )
 

@@ -31,7 +31,7 @@ jobs:
           python -m build .
 
       - name: Upload package
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: tljh_repo2docker-artifacts
           path: |
@@ -47,7 +47,7 @@ jobs:
       - name: Base Setup
         uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: tljh_repo2docker-artifacts
 
@@ -70,7 +70,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.8', '3.9', '3.10']
+        python-version: ['3.10', '3.11']
 
     steps:
       - name: Checkout
@@ -80,7 +80,7 @@ jobs:
         uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
 
       - name: Download app package
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: tljh_repo2docker-artifacts
 
@@ -120,7 +120,7 @@ jobs:
         uses: jupyterlab/maintainer-tools/.github/actions/base-setup@v1
 
       - name: Download app package
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: tljh_repo2docker-artifacts
 
@@ -129,6 +129,12 @@ jobs:
           set -eux
           python -m pip install -r dev-requirements.txt
           python -m pip install tljh_repo2docker*.whl
+
+          # Workaround: upgrade to the latest version of jupyterhub
+          # Because an older version of jupyterhub is installed together with CS-binderhub,
+          # upgrade jupyterhub after the installation of the plugin
+          python -m pip install --upgrade jupyterhub\<5
+
           npm -g install configurable-http-proxy
 
       - name: Install UI test dependencies
@@ -155,9 +161,9 @@ jobs:
 
       - name: Upload Playwright Test report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: tljh-playwright-tests
+          name: tljh-playwright-tests-${{ matrix.build-backend }}
           path: |
             ui-tests/local-test-results
             ui-tests/binderhub-test-results
