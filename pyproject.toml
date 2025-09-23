@@ -11,7 +11,7 @@ dependencies = [
   "sqlalchemy>=2",
   "pydantic>=2,<3",
   "alembic>=1.13,<2",
-  "jupyter-repo2docker>=2024,<2025",
+  "jupyter-repo2docker @ git+https://github.com/RCOSDP/CS-repo2docker.git@2025.10.0",
   "aiosqlite~=0.19.0",
 ]
 dynamic = ["version"]
@@ -24,6 +24,9 @@ tljh_repo2docker_upgrade_db = "tljh_repo2docker.dbutil:main"
 
 [project.entry-points.tljh]
 tljh_repo2docker = "tljh_repo2docker"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.version]
 source = "nodejs"

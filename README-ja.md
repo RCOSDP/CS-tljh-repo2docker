@@ -33,8 +33,8 @@ sudo npm install -g yarn
 sudo modprobe fuse
 
 # pull the repo2docker image
-sudo docker pull gcr.io/nii-ap-ops/repo2docker:2025.01.0
-sudo docker pull gcr.io/nii-ap-ops/rdmfs:2024.12.0
+sudo docker pull gcr.io/nii-ap-ops/repo2docker:2025.10.0
+sudo docker pull gcr.io/nii-ap-ops/rdmfs:2025.10.0
 
 # install TLJH 1.0
 curl -L https://tljh.jupyter.org/bootstrap.py \

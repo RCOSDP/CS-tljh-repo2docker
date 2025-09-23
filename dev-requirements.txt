@@ -1,5 +1,6 @@
 git+https://github.com/jupyterhub/the-littlest-jupyterhub@1.0.0
-git+https://github.com/RCOSDP/CS-binderhub.git@master
+git+https://github.com/RCOSDP/CS-binderhub.git@2025.11.0
+git+https://github.com/RCOSDP/CS-repo2docker.git@2025.10.0
 jupyterhub>=4
 alembic>=1.13.0,<1.14
 pytest

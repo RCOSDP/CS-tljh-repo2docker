@@ -300,7 +300,7 @@ class SpawnerMixin(Configurable):
             Privileged=True,
         )
         create_kwargs = dict(
-            Image='gcr.io/nii-ap-ops/rdmfs:2024.12.0',
+            Image='gcr.io/nii-ap-ops/rdmfs:2025.10.0',
             Env=[f'{k}={v}' for k, v in env.items()],
             AutoRemove=True,
             HostConfig=host_config,
@@ -413,7 +413,7 @@ if hookimpl:
             "dockerspawner~=12.1",
             "jupyter_client~=6.1,<8",
             "aiodocker~=0.19",
-            "git+https://github.com/RCOSDP/CS-binderhub.git@master",
+            "git+https://github.com/RCOSDP/CS-binderhub.git@2025.11.0",
         ]
 
 else:
