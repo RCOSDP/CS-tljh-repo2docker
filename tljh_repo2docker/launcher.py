@@ -32,6 +32,11 @@ class LaunchHandler(BaseHandler):
         spec = self._get_spec_from_request(provider_prefix)
         spec = spec.rstrip("/")
         provider = self._get_provider(provider_prefix, spec)
+
+        repo_token = self.get_argument('repo_token', None)
+        if repo_token and hasattr(provider, "set_access_token"):
+            provider.set_access_token(repo_token)
+
         repo = provider.get_repo_url()
         ref = await provider.get_resolved_ref()
 
@@ -48,7 +53,7 @@ class LaunchHandler(BaseHandler):
         buildargs = None
         username = None
         password = None
-        repo_token = self.get_argument('repo_token', None)
+        # repo_token is obtained above to authenticate provider access
         urlpath = self.get_argument('urlpath', None)
         if not repo:
             raise web.HTTPError(400, "Repository is empty")
