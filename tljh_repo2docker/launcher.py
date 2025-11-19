@@ -32,6 +32,11 @@ class LaunchHandler(BaseHandler):
         spec = self._get_spec_from_request(provider_prefix)
         spec = spec.rstrip("/")
         provider = self._get_provider(provider_prefix, spec)
+
+        repo_token = self.get_argument('repo_token', None)
+        if repo_token and hasattr(provider, "set_access_token"):
+            provider.set_access_token(repo_token)
+
         repo = provider.get_repo_url()
         ref = await provider.get_resolved_ref()
 
@@ -48,7 +53,7 @@ class LaunchHandler(BaseHandler):
         buildargs = None
         username = None
         password = None
-        repo_token = self.get_argument('repo_token', None)
+        # repo_token is obtained above to authenticate provider access
         urlpath = self.get_argument('urlpath', None)
         if not repo:
             raise web.HTTPError(400, "Repository is empty")
@@ -71,7 +76,7 @@ class LaunchHandler(BaseHandler):
         await build_image(
             repo, ref, '', memory, cpu, username, password, [],
             default_image_name=image_name,
-            repo2docker_image='gcr.io/nii-ap-ops/repo2docker:2025.01.0',
+            repo2docker_image='gcr.io/nii-ap-ops/repo2docker:2025.10.0',
             optional_envs=provider.get_optional_envs(access_token=repo_token),
             optional_labels=optional_labels,
         )

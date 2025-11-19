@@ -1,8 +1,11 @@
 import json
+import logging
 
 from urllib.parse import urlparse, quote_plus
 
-from aiodocker import Docker
+from aiodocker import Docker, DockerError
+
+logger = logging.getLogger(__name__)
 
 
 def get_optional_value(object, key):
@@ -108,24 +111,26 @@ async def build_image(
     cpu = cpu or ""
 
     # add extra labels to set additional image properties
-    labels = [
-        f"tljh_repo2docker.display_name={name}",
-        f"tljh_repo2docker.image_name={image_name}",
-        f"tljh_repo2docker.mem_limit={memory}",
-        f"tljh_repo2docker.cpu_limit={cpu}",
-    ]
+    desired_image_labels = {
+        "tljh_repo2docker.display_name": name,
+        "tljh_repo2docker.image_name": image_name,
+        "tljh_repo2docker.mem_limit": memory,
+        "tljh_repo2docker.cpu_limit": cpu,
+    }
+    optional_label_map = {}
+    if optional_labels is not None:
+        optional_label_map = {f"tljh_repo2docker.opt.{k}": str(v) for k, v in optional_labels.items()}
+        desired_image_labels.update(optional_label_map)
+
+    labels = [f"{key}={value}" for key, value in desired_image_labels.items()]
 
     builder_labels = {
         "repo2docker.repo": repo,
         "repo2docker.ref": ref,
         "repo2docker.build": image_name,
-        "tljh_repo2docker.display_name": name,
-        "tljh_repo2docker.mem_limit": memory,
-        "tljh_repo2docker.cpu_limit": cpu,
     }
-    if optional_labels is not None:
-        labels += [f"tljh_repo2docker.opt.{k}={v}" for k, v in optional_labels.items()]
-        builder_labels.update(dict([(f"tljh_repo2docker.opt.{k}", v) for k, v in optional_labels.items()]))
+    builder_labels.update(desired_image_labels)
+    builder_labels.update(optional_label_map)
 
     cmd = [
         "jupyter-repo2docker",
@@ -179,5 +184,51 @@ async def build_image(
             }
         )
 
+    expected_labels = builder_labels.copy()
+
+    async def ensure_image_labels(docker_client):
+        try:
+            info = await docker_client.images.inspect(image_name)
+        except DockerError as err:
+            logger.error("Unable to retrieve cached repo2docker image %s", image_name, exc_info=err)
+            raise
+
+        current_labels = (info.get("Config", {}) or {}).get("Labels", {}) or {}
+        if all(current_labels.get(key) == value for key, value in expected_labels.items()):
+            return
+
+        logger.info("Refreshing labels on cached repo2docker image %s", image_name)
+
+        updated_labels = current_labels.copy()
+        updated_labels.update(expected_labels)
+
+        repo_part, tag_part = (image_name.split(":", 1) + ["latest"])[:2]
+        container = await docker_client.containers.create({"Image": image_name, "Cmd": ["true"]})
+        try:
+            await container.commit(repository=repo_part, tag=tag_part, config={"Labels": updated_labels})
+        finally:
+            try:
+                await container.delete(force=True)
+            except DockerError as cleanup_err:
+                logger.warning("Failed to remove temporary repo2docker container for %s", image_name, exc_info=cleanup_err)
+
     async with Docker() as docker:
+        # Skip rebuild if the requested image tag already exists
+        try:
+            await docker.images.get(image_name)
+        except DockerError as e:
+            if e.status == 404:
+                logger.info(
+                    "repo2docker image %s not found locally; building new image", image_name
+                )
+            else:
+                logger.exception("Failed to inspect repo2docker image %s", image_name)
+                raise
+        else:
+            await ensure_image_labels(docker)
+            logger.info("Reusing cached repo2docker image %s", image_name)
+            return image_name
+
+        logger.info("Starting repo2docker build for %s (ref=%s, image=%s)", repo, ref, image_name)
         await docker.containers.run(config=config)
+        return image_name

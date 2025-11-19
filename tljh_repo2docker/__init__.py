@@ -1,5 +1,6 @@
 import json
 import os
+import textwrap
 
 from aiodocker import Docker
 from aiodocker.exceptions import DockerError
@@ -28,6 +29,26 @@ CPU_PERIOD = 100_000
 
 TLJH_R2D_ADMIN_SCOPE = "custom:tljh_repo2docker:admin"
 
+
+PROVISION_WRAPPER_CMD = textwrap.dedent("""\
+set -e
+
+# Find and execute provision.sh if it exists
+for path in \
+    "${REPO_DIR}/binder/provision.sh" \
+    "${REPO_DIR}/.binder/provision.sh" \
+    "$HOME/binder/provision.sh" \
+    "$HOME/.binder/provision.sh"; do
+
+    if [ -f "$path" ]; then
+        echo "[provision-wrapper] Executing: $path" >&2
+        exec bash "$path" jupyterhub-singleuser
+    fi
+done
+
+# No provision.sh found, start normally
+exec jupyterhub-singleuser
+""").strip()
 
 class SpawnerMixin(Configurable):
     """
@@ -223,6 +244,8 @@ class SpawnerMixin(Configurable):
         mount_path = os.path.join(self.rdmfs_base_path, self.container_name)
         if not os.path.exists(mount_path):
             os.makedirs(mount_path)
+        # Allow jovyan user to create symlinks in /mnt for provision.sh
+        os.chmod(mount_path, 0o777)
         self.extra_mounts = [
             dict(type='bind', source=mount_path, target='/mnt', propagation='rshared'),
         ]
@@ -230,14 +253,11 @@ class SpawnerMixin(Configurable):
         if rdmfs_id is not None:
             await self.remove_object_by_id(rdmfs_id)
         rdmfs_id = await self.create_rdmfs_object({
-            'RDM_NODE_ID': labels.get(
-                "tljh_repo2docker.opt.user.rdm_node_id", None
-            ),
             'RDM_API_URL': labels.get(
                 "tljh_repo2docker.opt.user.rdm_api_url", None
             ),
             'RDM_TOKEN': repo_token,
-            'MOUNT_PATH': '/mnt/rdm',
+            'MOUNT_PATH': '/mnt/rdms',
         })
         await self.start_object_by_id(rdmfs_id)
 
@@ -280,7 +300,7 @@ class SpawnerMixin(Configurable):
             Privileged=True,
         )
         create_kwargs = dict(
-            Image='gcr.io/nii-ap-ops/rdmfs:2024.12.0',
+            Image='gcr.io/nii-ap-ops/rdmfs:2025.10.0',
             Env=[f'{k}={v}' for k, v in env.items()],
             AutoRemove=True,
             HostConfig=host_config,
@@ -305,7 +325,7 @@ class SpawnerMixin(Configurable):
                 desc = await obj.show()
                 if 'State' in desc and desc['State']['Running']:
                     self.log.info('terminating...')
-                    exec = await obj.exec(["/bin/sh","-c","xattr -w command terminate /mnt/rdm"])
+                    exec = await obj.exec(["/bin/sh","-c","xattr -w command terminate /mnt/rdms"])
                     result = await exec.start(detach=True)
                     self.log.info('terminated: {}'.format(result))
                 else:
@@ -368,7 +388,7 @@ if hookimpl:
         c.JupyterHub.spawner_class = Repo2DockerSpawner
 
         # spawner
-        c.DockerSpawner.cmd = ["jupyterhub-singleuser"]
+        c.DockerSpawner.cmd = ["bash", "-lc", PROVISION_WRAPPER_CMD]
         c.DockerSpawner.pull_policy = "Never"
         c.DockerSpawner.remove = True
         c.Repo2DockerSpawner.rdmfs_base_path = '/opt/tljh/repo2docker/volumes'
@@ -393,7 +413,7 @@ if hookimpl:
             "dockerspawner~=12.1",
             "jupyter_client~=6.1,<8",
             "aiodocker~=0.19",
-            "git+https://github.com/RCOSDP/CS-binderhub.git@master",
+            "git+https://github.com/RCOSDP/CS-binderhub.git@2025.11.0",
         ]
 
 else:
