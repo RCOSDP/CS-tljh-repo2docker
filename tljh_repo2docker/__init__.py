@@ -366,7 +366,23 @@ class Repo2DockerSpawner(SpawnerMixin, DockerSpawner):
     async def start(self, *args, **kwargs):
         await self.set_limits()
         await self.set_extra_mounts()
+        await self.set_binder_env()
         return await super().start(*args, **kwargs)
+
+    async def set_binder_env(self):
+        """Set BINDER_REPO_URL environment variable from image labels"""
+        imagename = self.user_options.get("image")
+        async with Docker() as docker:
+            image = await docker.images.inspect(imagename)
+        labels = self._get_image_labels(image)
+        repo = labels.get("repo2docker.repo")
+        provider = labels.get("tljh_repo2docker.opt.provider")
+        if repo:
+            self.environment["BINDER_REPO_URL"] = repo
+        elif provider == "rdm":
+            raise web.HTTPError(500, "BINDER_REPO_URL is required for RDM provider but repo2docker.repo label is missing")
+        else:
+            self.log.warning("BINDER_REPO_URL not set: repo2docker.repo label not found")
 
     async def stop(self, *args, **kwargs):
         await super().stop(*args, **kwargs)
