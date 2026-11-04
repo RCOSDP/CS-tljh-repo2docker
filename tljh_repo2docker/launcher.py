@@ -108,7 +108,7 @@ class LaunchHandler(BaseHandler):
             await build_image(
                 repo=repo, ref=ref, owner=current_user.name,
                 default_image_name=image_name,
-                repo2docker_image='gcr.io/nii-ap-ops/repo2docker:2026.07.2',
+                repo2docker_image='gcr.io/nii-ap-ops/repo2docker:2026.10.0',
                 optional_envs=provider.get_optional_envs(access_token=repo_token),
                 optional_labels=optional_labels,
                 uid=uid, db_context=db_context, image_db_manager=image_db_manager,

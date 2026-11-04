@@ -41,7 +41,7 @@ sudo npm install -g yarn
 sudo modprobe fuse
 
 # pull the repo2docker image
-sudo docker pull gcr.io/nii-ap-ops/repo2docker:2026.07.2
+sudo docker pull gcr.io/nii-ap-ops/repo2docker:2026.10.0
 sudo docker pull gcr.io/nii-ap-ops/rdmfs:2026.02.1
 
 # install TLJH 2.0

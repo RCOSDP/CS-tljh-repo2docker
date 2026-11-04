@@ -386,7 +386,7 @@ if hookimpl:
             "dockerspawner~=14.0",
             "jupyter_client>=6.1,<8",
             "aiodocker~=0.21.0",
-            "git+https://github.com/RCOSDP/CS-binderhub.git@2026.07.0",
+            "git+https://github.com/RCOSDP/CS-binderhub.git@2026.11.0",
         ]
 
 else:
