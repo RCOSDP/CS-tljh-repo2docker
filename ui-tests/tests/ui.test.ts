@@ -110,7 +110,7 @@ test.describe('tljh_repo2docker UI Tests', () => {
       .first()
       .click();
     await page.waitForSelector(
-      '//span[contains(text(), "Successfully tagged") or (contains(text(), "naming to ") and contains(text(), " done"))]',
+      '//span[contains(text(), "Successfully tagged") or contains(text(), "naming to docker")]',
       { timeout: BUILD_TIMEOUT }
     );
     expect(await page.screenshot()).toMatchSnapshot('environment-console.png', {
@@ -126,9 +126,11 @@ test.describe('tljh_repo2docker UI Tests', () => {
     await expect(environment.locator('[data-field="owner"]')).toHaveText(
       'alice'
     );
+    // The log line above appears before the build finishes; the rebuild
+    // button is shown only once the build status is persisted.
     await expect(
       environment.getByRole('button', { name: 'Rebuild environment' })
-    ).toBeVisible();
+    ).toBeVisible({ timeout: BUILD_TIMEOUT });
     const creationDate = environment.locator('[data-field="creation_date"]');
     await expect(creationDate).toHaveText(/^\d{2}\/\d{2}\/\d{4}$/);
     // The build date changes between runs and is checked separately above.
@@ -210,7 +212,11 @@ test.describe('tljh_repo2docker UI Tests', () => {
     const accept = await page.getByRole('button', { name: 'Accept' });
     await accept.click();
     await page.waitForTimeout(2000);
-    await expect(page.getByRole('button', { name: 'Accept' })).toBeHidden();
+    // The dialog closes once the Docker image is deleted, which can take
+    // several seconds for a large image.
+    await expect(page.getByRole('button', { name: 'Accept' })).toBeHidden({
+      timeout: 60000
+    });
     await page.waitForTimeout(1000);
     await page.waitForURL('**/environments');
     await expect(await page.screenshot()).toMatchSnapshot(
