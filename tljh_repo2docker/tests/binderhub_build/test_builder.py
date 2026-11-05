@@ -1,4 +1,3 @@
-import asyncio
 from uuid import UUID, uuid4
 
 import pytest
@@ -12,6 +11,7 @@ from ..utils import (
     add_environment,
     api_request,
     remove_environment,
+    wait_for_build_status,
     wait_for_image,
 )
 
@@ -60,7 +60,9 @@ async def test_add_environment(
     assert uid is not None
 
     await wait_for_image(image_name=generated_image_name)
-    await asyncio.sleep(3)
+    # The image is tagged before the DB status flips to BUILT; wait for the
+    # persisted status before using the DB entry.
+    assert await wait_for_build_status(app, uid=uid) is not None
     images_db = (
         db_session.execute(
             sa.select(DockerImageSQL).where(DockerImageSQL.uid == UUID(uid))
@@ -95,7 +97,9 @@ async def test_delete_environment(
     assert uid is not None
 
     await wait_for_image(image_name=generated_image_name)
-    await asyncio.sleep(3)
+    # The image is tagged before the DB status flips to BUILT; wait for the
+    # persisted status before using the DB entry.
+    assert await wait_for_build_status(app, uid=uid) is not None
     r = await remove_environment(app, image_name=uid)
     assert r.status_code == 200
 
